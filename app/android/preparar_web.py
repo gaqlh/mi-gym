@@ -4,9 +4,9 @@ Le agrega el esqueleto HTML (el Artifact lo pone solo al publicar) y cambia las 
 Google Fonts por copias guardadas dentro del APK, para que la app funcione sin internet.
 Uso: python preparar_web.py <app-gym.html> <carpeta de salida> <versión>
 """
+import base64
 import pathlib
 import re
-import shutil
 import sys
 import urllib.request
 
@@ -52,10 +52,11 @@ def main(origen, destino, version):
         raise SystemExit('No encontré el marcador de versión en la app')
     html = html.replace("'__VERSION__'", "'" + version + "'")
     destino = pathlib.Path(destino)
-    (destino / 'fonts').mkdir(parents=True, exist_ok=True)
-    css = fuentes_css()
-    for f in FUENTES.glob('*.woff2'):
-        shutil.copy(f, destino / 'fonts' / f.name)
+    destino.mkdir(parents=True, exist_ok=True)
+    # Las fuentes van dentro de la misma página: la app no pide ningún archivo aparte
+    css = re.sub(r'url\(fonts/([^)]+\.woff2)\)',
+                 lambda m: 'url(data:font/woff2;base64,' + base64.b64encode((FUENTES / m.group(1)).read_bytes()).decode('ascii') + ')',
+                 fuentes_css())
     html, quitados = re.subn(r'<link rel="(?:preconnect|stylesheet)" href="https://fonts\.g[^"]*"[^>]*>\n?', '', html)
     if quitados != 3:
         raise SystemExit(f'Esperaba 3 enlaces a Google Fonts y encontré {quitados}')

@@ -14,11 +14,11 @@ import android.webkit.JavascriptInterface;
 import android.webkit.ValueCallback;
 import android.webkit.WebChromeClient;
 import android.webkit.WebResourceRequest;
-import android.webkit.WebResourceResponse;
 import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.ByteArrayOutputStream;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.IOException;
@@ -26,9 +26,9 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * La app es la misma página web que se prueba en Claude, guardada dentro del APK (assets/web).
- * Se sirve desde https://appassets.androidplatform.net para que el guardado del navegador
- * (localStorage) quede en el celular y no se pierda al actualizar la app.
+ * La app es la misma página web que se prueba en Claude, guardada dentro del APK (assets/web/index.html,
+ * con letras y todo incluidos). Se carga con la dirección https://appassets.androidplatform.net para que
+ * el guardado del navegador (localStorage) quede en el celular y no se pierda al actualizar la app.
  */
 public class MainActivity extends Activity {
 
@@ -61,20 +61,6 @@ public class MainActivity extends Activity {
 
         web.setWebViewClient(new WebViewClient() {
             @Override
-            public WebResourceResponse shouldInterceptRequest(WebView v, WebResourceRequest r) {
-                Uri u = r.getUrl();
-                if (!HOST.equals(u.getHost())) return null;
-                String ruta = u.getPath();
-                if (ruta == null || ruta.equals("/") || ruta.isEmpty()) ruta = "/index.html";
-                try {
-                    InputStream in = getAssets().open("web" + ruta);
-                    return new WebResourceResponse(tipo(ruta), "utf-8", in);
-                } catch (IOException e) {
-                    return new WebResourceResponse("text/plain", "utf-8", 404, "No encontrado", null, null);
-                }
-            }
-
-            @Override
             public boolean shouldOverrideUrlLoading(WebView v, WebResourceRequest r) {
                 Uri u = r.getUrl();
                 if (HOST.equals(u.getHost())) return false;
@@ -106,7 +92,25 @@ public class MainActivity extends Activity {
             }
         });
 
-        web.loadUrl("https://" + HOST + "/index.html");
+        // La página se entrega directo (sin pedirla como si fuera de internet): así abre igual en cualquier WebView
+        web.loadDataWithBaseURL("https://" + HOST + "/", leerPagina(), "text/html", "utf-8", null);
+    }
+
+    private String leerPagina() {
+        try {
+            InputStream in = getAssets().open("web/index.html");
+            ByteArrayOutputStream out = new ByteArrayOutputStream();
+            try {
+                byte[] buf = new byte[64 * 1024];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            } finally {
+                in.close();
+            }
+            return out.toString("UTF-8");
+        } catch (IOException e) {
+            return "<p style=\"font-family:sans-serif;padding:24px\">No pude abrir la app. Reinstálala desde el código QR.</p>";
+        }
     }
 
     private void configurarBarras() {
@@ -116,17 +120,6 @@ public class MainActivity extends Activity {
         int flags = View.SYSTEM_UI_FLAG_LIGHT_STATUS_BAR;
         if (Build.VERSION.SDK_INT >= 26) flags |= View.SYSTEM_UI_FLAG_LIGHT_NAVIGATION_BAR;
         w.getDecorView().setSystemUiVisibility(flags);
-    }
-
-    private static String tipo(String ruta) {
-        if (ruta.endsWith(".html")) return "text/html";
-        if (ruta.endsWith(".css")) return "text/css";
-        if (ruta.endsWith(".js")) return "application/javascript";
-        if (ruta.endsWith(".woff2")) return "font/woff2";
-        if (ruta.endsWith(".png")) return "image/png";
-        if (ruta.endsWith(".svg")) return "image/svg+xml";
-        if (ruta.endsWith(".json")) return "application/json";
-        return "application/octet-stream";
     }
 
     @Override
