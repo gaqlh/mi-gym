@@ -19,8 +19,11 @@ import android.webkit.WebSettings;
 import android.webkit.WebView;
 import android.webkit.WebViewClient;
 
+import java.io.File;
+import java.io.FileOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.io.OutputStream;
 
 /**
  * La app es la misma página web que se prueba en Claude, guardada dentro del APK (assets/web).
@@ -31,9 +34,11 @@ public class MainActivity extends Activity {
 
     private static final String HOST = "appassets.androidplatform.net";
     private static final int ELEGIR_FOTO = 1;
+    private static final int IMPORTAR_FITNOTES = 2;
 
     private WebView web;
     private ValueCallback<Uri[]> fotoCallback;
+    private volatile String importacion;
 
     @Override
     protected void onCreate(Bundle estado) {
@@ -135,7 +140,54 @@ public class MainActivity extends Activity {
             fotoCallback = null;
             return;
         }
+        if (pedido == IMPORTAR_FITNOTES) {
+            if (resultado == RESULT_OK && datos != null && datos.getData() != null) leerRespaldo(datos.getData());
+            else avisarImportacion("{\"cancelado\":true}");
+            return;
+        }
         super.onActivityResult(pedido, resultado, datos);
+    }
+
+    /** Copia el respaldo elegido a la caché y lo lee fuera del hilo de la pantalla. */
+    private void leerRespaldo(final Uri uri) {
+        new Thread(new Runnable() {
+            @Override
+            public void run() {
+                File copia = new File(getCacheDir(), "fitnotes-respaldo.db");
+                String resultado;
+                try {
+                    InputStream in = getContentResolver().openInputStream(uri);
+                    if (in == null) throw new IOException("sin datos");
+                    OutputStream out = new FileOutputStream(copia);
+                    try {
+                        byte[] buf = new byte[64 * 1024];
+                        int n;
+                        while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+                    } finally {
+                        in.close();
+                        out.close();
+                    }
+                    resultado = LectorFitNotes.leer(copia);
+                } catch (Exception e) {
+                    resultado = LectorFitNotes.error("No pude leer ese archivo. Elige el respaldo que guardaste desde FitNotes (termina en .fitnotes).");
+                } finally {
+                    copia.delete();
+                    new File(copia.getPath() + "-journal").delete();
+                }
+                avisarImportacion(resultado);
+            }
+        }).start();
+    }
+
+    /** Deja el resultado listo y avisa a la página, que lo pide con resultadoImportacion(). */
+    private void avisarImportacion(String json) {
+        importacion = json;
+        runOnUiThread(new Runnable() {
+            @Override
+            public void run() {
+                web.evaluateJavascript("window.onFitNotesListo && window.onFitNotesListo()", null);
+            }
+        });
     }
 
     /** Botón atrás: primero navega dentro de la app; si ya está en el inicio, sale. */
@@ -172,6 +224,30 @@ public class MainActivity extends Activity {
                     else getWindow().clearFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
                 }
             });
+        }
+
+        @JavascriptInterface
+        public void importarFitNotes() {
+            runOnUiThread(new Runnable() {
+                @Override
+                public void run() {
+                    Intent i = new Intent(Intent.ACTION_GET_CONTENT);
+                    i.addCategory(Intent.CATEGORY_OPENABLE);
+                    i.setType("*/*");
+                    try {
+                        startActivityForResult(Intent.createChooser(i, "Elegir respaldo de FitNotes"), IMPORTAR_FITNOTES);
+                    } catch (Exception e) {
+                        avisarImportacion(LectorFitNotes.error("No encontré una app para elegir archivos en el celular."));
+                    }
+                }
+            });
+        }
+
+        @JavascriptInterface
+        public String resultadoImportacion() {
+            String r = importacion;
+            importacion = null;
+            return r;
         }
 
         @JavascriptInterface

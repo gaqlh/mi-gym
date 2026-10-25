@@ -102,7 +102,7 @@
 
 <main class="page">
   <header>
-    <p class="eyebrow">Versión de prueba 0.2 · app Android · 25 de octubre de 2026</p>
+    <p class="eyebrow">Versión de prueba 0.3 · app Android · 25 de octubre de 2026</p>
     <h1>Lista de pruebas</h1>
     <p class="lede">Instala la app en tu celular, haz cada prueba y marca aquí si salió bien o si falla. Si algo falla o no te gusta, escribe una nota corta. Tus marcas y notas quedan guardadas y yo las leo para hacer los cambios.</p>
   </header>
@@ -121,7 +121,7 @@
       <li><b>Toca Instalar.</b> Si Google Play Protect dice que no reconoce la app, toca «Más detalles» y luego «Instalar de todas formas». Sale porque la app es tuya y no está en Play Store.</li>
       <li><b>Abre «Mi gym»</b> desde su ícono azul con una mancuerna.</li>
     </ol>
-    <p class="note">Versión actual: 0.2. Cuando haya una nueva, la app te avisa en el inicio y la bajas desde ahí o con este mismo código. Instálala encima de la anterior y tus datos se mantienen. Si desinstalas la app, se borran.</p>
+    <p class="note">Versión actual: 0.3. Cuando haya una nueva, la app te avisa en el inicio y la bajas desde ahí o con este mismo código. Instálala encima de la anterior y tus datos se mantienen. Si desinstalas la app, se borran.</p>
   </section>
 
   <div class="summary" aria-live="polite">
@@ -210,9 +210,16 @@
       { id: 'pantalla', haz: 'Abre un ejercicio y deja el celular quieto más de un minuto.', ok: 'La pantalla no se apaga mientras anotas series.' },
       { id: 'enlace', haz: 'En Ajustes, toca «Abrir la lista de pruebas».', ok: 'Se abre esta lista en el navegador del celular.' }
     ] },
+    { title: 'Traer datos de FitNotes', items: [
+      { id: 'fn-respaldo', haz: 'En FitNotes, abre «Backup» y toca «Save Backup» (o «Share Backup» para mandártelo).', ok: 'Queda un archivo que empieza con FitNotes_Backup y termina en .fitnotes.' },
+      { id: 'fn-elegir', haz: 'En la app, ve a Ajustes › «Elegir respaldo de FitNotes» y elige ese archivo.', ok: 'Antes de cambiar nada, te dice cuántas series, días, ejercicios y rutinas encontró, y desde qué fecha.' },
+      { id: 'fn-importar', haz: 'Toca «Reemplazar con mis datos de FitNotes».', ok: 'Ves tus rutinas de FitNotes en el inicio (cada día de una rutina es una rutina aquí) y tus ejercicios en el catálogo, con sus categorías.' },
+      { id: 'fn-historial', haz: 'Abre un ejercicio que hayas hecho en FitNotes.', ok: '«La vez pasada» y «Tus récords» muestran tus pesos reales de FitNotes.' }
+    ] },
     { title: 'Ajustes', items: [
       { id: 'ajustes', haz: 'Toca el botón de ajustes, arriba a la derecha del inicio. Cambia el descanso y el salto del peso.', ok: 'Se nota al anotar series.' },
-      { id: 'ejemplo', haz: 'Cuando termines de probar, borra los datos de ejemplo en Ajustes.', ok: 'Desaparece el historial de ejemplo. Quedan tus rutinas, tus ejercicios y lo que anotaste tú.' }
+      { id: 'ejemplo', haz: 'Si no trajiste tus datos de FitNotes, borra los datos de ejemplo en Ajustes cuando termines de probar.', ok: 'Desaparece el historial de ejemplo. Quedan tus rutinas, tus ejercicios y lo que anotaste tú.' },
+      { id: 'actualizar', haz: 'Cuando te avise de una versión nueva, toca el aviso azul del inicio e instálala encima.', ok: 'Se actualiza sin perder nada de lo que anotaste.' }
     ] }
   ];
 

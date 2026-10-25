@@ -289,6 +289,7 @@
   .mchip.on { background: var(--a-accent); border-color: var(--a-accent); color: var(--a-on-accent); font-weight: 600; }
   .set-box { background: var(--a-card); border: 1px solid var(--a-line); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
   .set-box h2 { margin: 0; font-size: 15px; font-weight: 700; }
+  .mini-steps { margin: 0; padding-left: 1.3em; display: flex; flex-direction: column; gap: 4px; font-size: 13.5px; color: var(--a-fg); }
 
   /* Catálogo */
   .search { position: relative; }
@@ -414,7 +415,12 @@
   function agoText(k) {
     if (!k) return 'sin usar';
     var n = daysBetween(k, todayK());
-    return n <= 0 ? 'hoy' : (n === 1 ? 'ayer' : 'hace ' + n + ' días');
+    if (n <= 0) return 'hoy';
+    if (n === 1) return 'ayer';
+    if (n < 60) return 'hace ' + n + ' días';
+    if (n < 365) return 'hace ' + Math.round(n / 30) + ' meses';
+    var a = Math.floor(n / 365);
+    return a === 1 ? 'hace 1 año' : 'hace ' + a + ' años';
   }
   function newId(prefix) { return prefix + '-' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
   function clone(o) { return JSON.parse(JSON.stringify(o)); }
@@ -462,6 +468,15 @@
     var m = 0;
     front.forEach(function (s) { if (s[0] >= w && s[1] > m) m = s[1]; });
     return m;
+  }
+  // Los músculos de siempre y, al final, los que vengan de FitNotes (por ejemplo Cardio)
+  function musclesAll() {
+    var extra = [];
+    Object.keys(DATA.exercises).forEach(function (k) {
+      var m = DATA.exercises[k].muscle;
+      if (m && MUSCLES.indexOf(m) < 0 && extra.indexOf(m) < 0) extra.push(m);
+    });
+    return MUSCLES.concat(extra.sort(function (a, b) { return a.localeCompare(b, 'es'); }));
   }
   function groupIn(groups, id) {
     for (var i = 0; i < groups.length; i++) if (groups[i].indexOf(id) >= 0) return groups[i];
@@ -606,15 +621,129 @@
     return { exercises: exercises, routines: routines, workouts: workouts, settings: clone(DEFAULT_SETTINGS) };
   }
 
-  function persistNow() {
+  function persistNow(silent) {
     clearTimeout(saveTimer);
     saveTimer = null;
     try {
       localStorage.setItem(STORE_KEY, JSON.stringify({ v: 1, exercises: DATA.exercises, routines: DATA.routines, workouts: DATA.workouts, settings: DATA.settings }));
+      return true;
     } catch (e) {
-      app.toast('No queda espacio para guardar en el celular. Quita fotos de rutinas o borra datos viejos.');
+      if (!silent) app.toast('No queda espacio para guardar en el celular. Quita fotos de rutinas o borra datos viejos.');
+      return false;
     }
   }
+
+  // ---------- Traer datos de FitNotes ----------
+  // La app Android lee el respaldo .fitnotes (SQLite) y entrega sus tablas tal cual; aquí se convierten
+  var MUSCLE_ALIASES = {
+    pecho: 'Pecho', chest: 'Pecho', espalda: 'Espalda', back: 'Espalda', hombros: 'Hombros', hombro: 'Hombros', shoulders: 'Hombros',
+    biceps: 'Bíceps', triceps: 'Tríceps', piernas: 'Piernas', pierna: 'Piernas', legs: 'Piernas',
+    abdomen: 'Abdomen', abs: 'Abdomen', abdominales: 'Abdomen', cardio: 'Cardio'
+  };
+  function plain(s) { return String(s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').trim(); }
+  function mapMuscle(name) {
+    var k = plain(name);
+    if (MUSCLE_ALIASES[k]) return MUSCLE_ALIASES[k];
+    var t = String(name || '').trim();
+    return t ? cap(t) : 'Otros';
+  }
+  function guessImage(name, muscles) {
+    var n = plain(name);
+    if (/pierna|leg|gluteo|cuadri/.test(n)) return 'sentadilla';
+    if (/empuje|push/.test(n)) return 'militar';
+    if (/jalon|pull|tiron|espalda|back/.test(n)) return 'dominada';
+    if (/torso|upper|pecho|chest/.test(n)) return 'banca';
+    if (/brazo|arm|biceps|triceps/.test(n)) return 'brazos';
+    if (/abs|abdom|core/.test(n)) return 'abdomen';
+    if (/cardio|correr|run/.test(n)) return 'cardio';
+    return { 'Pecho': 'banca', 'Espalda': 'dominada', 'Hombros': 'militar', 'Bíceps': 'brazos', 'Tríceps': 'fondos', 'Piernas': 'sentadilla', 'Abdomen': 'abdomen', 'Cardio': 'cardio' }[muscles[0]] || 'mancuerna';
+  }
+  function convertFitNotes(raw) {
+    var cat = {}, exercises = {}, exId = {};
+    (raw.categories || []).forEach(function (c) { cat[c[0]] = mapMuscle(c[1]); });
+    (raw.exercises || []).forEach(function (e) {
+      var id = 'fn-' + e[0];
+      exId[e[0]] = id;
+      exercises[id] = { name: String(e[1] || 'Ejercicio').trim(), muscle: cat[e[2]] || 'Otros' };
+    });
+    // Cada día de una rutina de FitNotes es una rutina aquí
+    var routines = {}, secId = {}, perRoutine = {}, order = 0;
+    (raw.sections || []).forEach(function (s) { perRoutine[s[0]] = (perRoutine[s[0]] || 0) + 1; });
+    (raw.sections || []).forEach(function (s) {
+      var id = 'fn-r' + s[2], rName = String(s[1] || '').trim(), sName = String(s[3] || '').trim();
+      var name = perRoutine[s[0]] > 1 ? (sName || rName) : (rName || sName);
+      secId[s[2]] = id;
+      routines[id] = { name: name || 'Rutina', color: COLOR_ORDER[order % COLOR_ORDER.length], image: 'mancuerna', photo: null, ex: [], groups: [], order: ++order };
+    });
+    (raw.sectionEx || []).forEach(function (x) {
+      var r = routines[secId[x[0]]], e = exId[x[1]];
+      if (r && e && r.ex.indexOf(e) < 0) r.ex.push(e);
+    });
+    Object.keys(routines).forEach(function (id) {
+      var r = routines[id], count = {};
+      r.ex.forEach(function (e) { var m = exercises[e].muscle; count[m] = (count[m] || 0) + 1; });
+      r.image = guessImage(r.name, Object.keys(count).sort(function (a, b) { return count[b] - count[a]; }));
+    });
+    // Series por día; la rutina de cada día es la que más series aportó
+    var setSec = {}, workouts = {}, votes = {}, sets = 0;
+    (raw.setSection || []).forEach(function (x) { setSec[x[0]] = x[1]; });
+    (raw.logs || []).forEach(function (l) {
+      var e = exId[l[0]], reps = Math.round(+l[3]), kg = Math.round((+l[2] || 0) * 100) / 100, d = String(l[1] || '').slice(0, 10);
+      if (!e || !(reps > 0) || !/^\d{4}-\d{2}-\d{2}$/.test(d)) return;
+      var w = workouts[d] || (workouts[d] = { date: d, routineId: 'free', extra: [], groups: [], sets: {} });
+      (w.sets[e] = w.sets[e] || []).push({ w: kg, r: reps });
+      sets++;
+      var rid = secId[setSec[l[4]]];
+      if (rid) { var v = votes[d] || (votes[d] = {}); v[rid] = (v[rid] || 0) + 1; }
+    });
+    Object.keys(votes).forEach(function (d) {
+      var v = votes[d], best = null;
+      Object.keys(v).forEach(function (rid) { if (!best || v[rid] > v[best]) best = rid; });
+      workouts[d].routineId = best;
+    });
+    // Superseries de cada día
+    var grupos = {};
+    (raw.groups || []).forEach(function (g) {
+      var d = String(g[0] || '').slice(0, 10), e = exId[g[2]], k = d + '|' + g[1];
+      if (!workouts[d] || !e) return;
+      grupos[k] = grupos[k] || { d: d, ids: [] };
+      if (grupos[k].ids.indexOf(e) < 0) grupos[k].ids.push(e);
+    });
+    Object.keys(grupos).forEach(function (k) { var g = grupos[k]; if (g.ids.length > 1) workouts[g.d].groups.push({ ids: g.ids }); });
+    var days = Object.keys(workouts).sort();
+    return {
+      exercises: exercises, routines: routines, workouts: workouts,
+      stats: { sets: sets, days: days.length, first: days[0], last: days[days.length - 1], exercises: Object.keys(exercises).length, routines: Object.keys(routines).length }
+    };
+  }
+  function fmtCount(n) { return String(n).replace(/\B(?=(\d{3})+(?!\d))/g, '.'); }
+  function applyImport(res) {
+    var antes = { exercises: DATA.exercises, routines: DATA.routines, workouts: DATA.workouts };
+    DATA.exercises = res.exercises; DATA.routines = res.routines; DATA.workouts = res.workouts;
+    if (!persistNow(true)) {
+      DATA.exercises = antes.exercises; DATA.routines = antes.routines; DATA.workouts = antes.workouts;
+      app.render();
+      app.toast('Tus datos de FitNotes no caben en el espacio de la app. No cambié nada.');
+      return;
+    }
+    var st = app.st;
+    st.log = null; st.draft = null; st.pick = null; st.sheet = null; st.screen = 'home'; st.autoDay = true;
+    app.render();
+    app.toast('Listo: traje ' + fmtCount(res.stats.sets) + ' series de FitNotes.');
+  }
+  // La app Android llama a esto cuando terminó de leer el archivo elegido
+  window.onFitNotesListo = function () {
+    var raw = null;
+    try { raw = JSON.parse((window.AppNativo && window.AppNativo.resultadoImportacion()) || 'null'); } catch (e) { raw = { error: 'No pude leer el respaldo.' }; }
+    if (!raw || raw.cancelado) return;
+    if (raw.error) { app.toast(raw.error); return; }
+    var res = convertFitNotes(raw), s = res.stats;
+    if (!s.sets) { app.toast('Ese respaldo no tiene series con peso y repeticiones.'); return; }
+    app.confirm('Traer datos de FitNotes',
+      'Encontré ' + fmtCount(s.sets) + ' series en ' + fmtCount(s.days) + ' días (del ' + dateLabel(s.first) + ' ' + s.first.slice(0, 4) + ' al ' + dateLabel(s.last) + ' ' + s.last.slice(0, 4) + '), ' +
+      plural(s.exercises, 'ejercicio', 'ejercicios') + ' y ' + plural(s.routines, 'rutina', 'rutinas') + '. Se reemplaza lo que hay ahora en la app, incluidos los datos de ejemplo.',
+      'Reemplazar con mis datos de FitNotes', function () { applyImport(res); });
+  };
   function persistSoon() { clearTimeout(saveTimer); saveTimer = setTimeout(persistNow, 200); }
 
   function startDevice() {
@@ -880,6 +1009,10 @@
         break;
       case 'open-settings': st.screen = 'settings'; break;
       case 'check-update': this.toast('Buscando versión nueva…'); checkUpdate(true); return;
+      case 'import-fitnotes':
+        if (!window.AppNativo || !window.AppNativo.importarFitNotes) { this.toast('Esto funciona en la app del celular.'); return; }
+        window.AppNativo.importarFitNotes();
+        return;
       case 'settings-back': st.screen = 'home'; break;
       case 'set-rest': writeDoc('settings', 'app', Object.assign({}, DATA.settings, { rest: +id })); break;
       case 'set-step': writeDoc('settings', 'app', Object.assign({}, DATA.settings, { step: +id })); break;
@@ -1632,7 +1765,7 @@
     var excluded = mode === 'pick' ? this.pickExcluded() : [];
     var all = Object.keys(DATA.exercises).map(this.ex, this).sort(function (a, b) { return a.name.localeCompare(b.name, 'es'); });
     var any = false;
-    var html = MUSCLES.map(function (m) {
+    var html = musclesAll().map(function (m) {
       var list = all.filter(function (e) { return e.muscle === m && (!q || e.name.toLowerCase().indexOf(q) >= 0); });
       if (q && !list.length) return '';
       if (list.length) any = true;
@@ -1673,7 +1806,7 @@
 
   App.prototype.scr_newex = function () {
     var n = this.st.newEx;
-    var chips = MUSCLES.map(function (m) {
+    var chips = musclesAll().map(function (m) {
       var on = n.muscle === m;
       return '<button type="button" class="mchip' + (on ? ' on' : '') + '" data-act="newex-muscle" data-id="' + m + '" aria-pressed="' + on + '">' + m + '</button>';
     }).join('');
@@ -1711,6 +1844,13 @@
       '</div>' +
       '<div class="set-box"><h2>Lista de pruebas</h2><p class="small">Lo que hay que probar en esta versión. Marca Bien o Falla y deja notas.</p>' +
       '<a class="btn-outline" href="https://claude.ai/artifact/FevVpa4mcKXbkHV39jRD9B" target="_blank" rel="noopener" style="text-decoration: none;">Abrir la lista de pruebas</a></div>' +
+      (esApk
+        ? '<div class="set-box"><h2>Traer tus datos de FitNotes</h2>' +
+          '<ol class="mini-steps"><li>En FitNotes, abre «Backup» y toca «Save Backup», o «Share Backup» para mandártelo al celular.</li>' +
+          '<li>Aquí, toca el botón y elige ese archivo. Su nombre empieza con FitNotes_Backup.</li></ol>' +
+          '<p class="small">Se traen tus ejercicios, categorías, rutinas, series y superseries. Reemplaza lo que hay ahora en la app, incluidos los datos de ejemplo. Antes de cambiar nada te muestro lo que encontré.</p>' +
+          '<button type="button" class="btn-outline" data-act="import-fitnotes">Elegir respaldo de FitNotes</button></div>'
+        : '') +
       (esApk
         ? '<div class="set-box"><h2>Versión ' + esc(APP_VERSION) + '</h2><p class="small">La app revisa sola al abrirse si hay una versión nueva en GitHub.</p>' +
           (update ? updateLink() : '<button type="button" class="btn-outline" data-act="check-update">Buscar versión nueva</button>') + '</div>'
