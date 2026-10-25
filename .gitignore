@@ -1,0 +1,15 @@
+# Material de FitNotes usado solo como referencia: no se sube (no es nuestro)
+apk/
+codigo-decompilado/
+herramientas/
+
+# Firma de la app: solo en esta PC (con ella se firman las actualizaciones)
+app/android/firma/
+*.keystore
+
+# Archivos que se generan al compilar
+app/android/build/
+app/android/salida/
+
+# Configuración local de Claude Code
+.claude/

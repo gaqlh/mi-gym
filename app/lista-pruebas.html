@@ -1,0 +1,365 @@
+<title>Pruebas de mi app de gym</title>
+<meta name="claude:viewport-fit-sides" content="cover">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Barlow+Condensed:wght@600;700&family=Barlow:wght@400;500;600;700&family=IBM+Plex+Mono:wght@500;600&display=swap">
+<style>
+  /* Layout: una columna de lectura; cada prueba es una fila con qué hacer, qué debería pasar, y Bien / Falla */
+  :root {
+    --bg: #EEF1F4; --surface: #FFFFFF; --fg: #12161B; --muted: #56606B; --line: #D5DBE1;
+    --accent: #1F5FBF; --accent-soft: #E3ECF9; --on-accent: #FFFFFF;
+    --ok: #1E8A4C; --ok-soft: #DDF1E5; --ok-ink: #17703D;
+    --bad: #B3261E; --bad-soft: #FBE4E1; --bad-ink: #A1231C;
+    --f-display: "Barlow Condensed", "Arial Narrow", sans-serif;
+    --f-body: "Barlow", "Segoe UI", system-ui, sans-serif;
+    --f-mono: "IBM Plex Mono", ui-monospace, Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) {
+    :root:not([data-theme="light"]) {
+      --bg: #0F1215; --surface: #171B20; --fg: #E6EAEE; --muted: #9AA4AF; --line: #2A3139;
+      --accent: #6EA2F0; --accent-soft: #1A2A42; --on-accent: #0F1215;
+      --ok: #3DB872; --ok-soft: #153523; --ok-ink: #7FD8A4;
+      --bad: #F07A6E; --bad-soft: #3A1C19; --bad-ink: #F5A398;
+      color-scheme: dark;
+    }
+  }
+  :root[data-theme="dark"] {
+    --bg: #0F1215; --surface: #171B20; --fg: #E6EAEE; --muted: #9AA4AF; --line: #2A3139;
+    --accent: #6EA2F0; --accent-soft: #1A2A42; --on-accent: #0F1215;
+    --ok: #3DB872; --ok-soft: #153523; --ok-ink: #7FD8A4;
+    --bad: #F07A6E; --bad-soft: #3A1C19; --bad-ink: #F5A398;
+    color-scheme: dark;
+  }
+  * { box-sizing: border-box; }
+  body { background: var(--bg); color: var(--fg); font: 400 16px/1.5 var(--f-body); -webkit-font-smoothing: antialiased; }
+  h1, h2, p { margin: 0; }
+  h1, h2 { text-wrap: balance; }
+  .page {
+    max-width: 760px; margin: 0 auto;
+    padding-left: max(16px, env(safe-area-inset-left, 0px));
+    padding-right: max(16px, env(safe-area-inset-right, 0px));
+    padding-block: 32px 64px;
+    display: flex; flex-direction: column; gap: 32px;
+  }
+  header { display: flex; flex-direction: column; gap: 12px; }
+  .eyebrow { font: 600 12px/1 var(--f-mono); letter-spacing: .08em; text-transform: uppercase; color: var(--muted); }
+  h1 { font: 700 clamp(2.2rem, 7vw, 3rem)/1 var(--f-display); text-transform: uppercase; letter-spacing: .01em; }
+  .lede { max-width: 62ch; }
+  .install { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .steps { margin: 0; padding-left: 1.5em; display: flex; flex-direction: column; gap: 10px; }
+  .steps li { padding-left: 4px; }
+  .steps li::marker { font-family: var(--f-mono); font-weight: 600; color: var(--accent); }
+  .install code { font: 500 .85rem/1.5 var(--f-mono); overflow-wrap: anywhere; background: var(--bg); padding: 1px 5px; border-radius: 5px; }
+  .note { font-size: .92rem; color: var(--muted); }
+
+  .summary { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 14px 16px; display: flex; flex-direction: column; gap: 10px; position: sticky; top: env(safe-area-inset-top, 0px); z-index: 2; }
+  .sum-row { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: .95rem; }
+  .sum-row b { font-family: var(--f-mono); font-weight: 600; }
+  .sum-ok b { color: var(--ok-ink); }
+  .sum-bad b { color: var(--bad-ink); }
+  .sumbar { display: flex; height: 8px; border-radius: 4px; background: var(--line); overflow: hidden; }
+  .sumbar span { height: 100%; transition: width .3s; }
+  .sumbar .b-ok { background: var(--ok); }
+  .sumbar .b-bad { background: var(--bad); }
+  .store-note { font-size: .88rem; color: var(--muted); }
+
+  section { display: flex; flex-direction: column; gap: 10px; }
+  section h2 { font: 600 1.45rem/1.1 var(--f-display); text-transform: uppercase; letter-spacing: .02em; }
+  .items { list-style: none; margin: 0; padding: 0; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; overflow: hidden; }
+  .item { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 4px 12px; padding: 14px 16px; }
+  .item + .item { border-top: 1px solid var(--line); }
+  .item.bien { background: color-mix(in srgb, var(--ok-soft) 55%, var(--surface)); }
+  .item.falla { background: color-mix(in srgb, var(--bad-soft) 60%, var(--surface)); }
+  .num { font: 600 .9rem/1.6 var(--f-mono); color: var(--muted); }
+  .body { display: flex; flex-direction: column; gap: 6px; min-width: 0; }
+  .haz { font-weight: 600; }
+  .ok { color: var(--muted); font-size: .95rem; }
+  .ok b { font-weight: 600; color: var(--fg); }
+  .controls { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 4px; }
+  .st { min-height: 40px; padding: 0 14px; border-radius: 999px; border: 1.5px solid var(--line); background: var(--surface); color: var(--fg); font: 600 .92rem/1 var(--f-body); cursor: pointer; display: inline-flex; align-items: center; gap: 6px; }
+  .st:hover { border-color: var(--muted); }
+  .st.st-ok[aria-pressed="true"] { background: var(--ok); border-color: var(--ok); color: var(--on-accent); }
+  .st.st-bad[aria-pressed="true"] { background: var(--bad); border-color: var(--bad); color: var(--on-accent); }
+  .st.st-note { border-style: dashed; color: var(--muted); }
+  .st:focus-visible, textarea:focus-visible, input:focus-visible, .open-app:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  textarea, .txt {
+    width: 100%; min-height: 76px; padding: 10px 12px; border-radius: 10px;
+    border: 1px solid var(--line); background: var(--surface); color: var(--fg);
+    font: 400 .95rem/1.45 var(--f-body); resize: vertical;
+  }
+  .txt { min-height: 46px; }
+  .saved { font-size: .8rem; color: var(--muted); min-height: 1em; }
+  .general { background: var(--surface); border: 1px solid var(--line); border-radius: 12px; padding: 16px; display: flex; flex-direction: column; gap: 14px; }
+  .general label { font-weight: 600; display: block; margin-bottom: 6px; }
+  .general .hint { font-size: .9rem; color: var(--muted); margin-bottom: 6px; }
+  footer { font: 500 .8rem/1.5 var(--f-mono); color: var(--muted); }
+  .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+</style>
+
+<main class="page">
+  <header>
+    <p class="eyebrow">Versión de prueba 0.1 · app Android · 25 de octubre de 2026</p>
+    <h1>Lista de pruebas</h1>
+    <p class="lede">Instala la app en tu celular, haz cada prueba y marca aquí si salió bien o si falla. Si algo falla o no te gusta, escribe una nota corta. Tus marcas y notas quedan guardadas y yo las leo para hacer los cambios.</p>
+  </header>
+
+  <section class="install" aria-labelledby="h-instalar">
+    <h2 id="h-instalar">Instalar en tu celular</h2>
+    <ol class="steps">
+      <li><b>Pasa el archivo al celular.</b> Está en tu PC en <code>C:\Users\gusta\Proyectos\fitnotes\app\android\salida\MiGym-0.1.apk</code>. Envíatelo por WhatsApp o Telegram a ti mismo, súbelo a Google Drive o cópialo con el cable USB.</li>
+      <li><b>Ábrelo en el celular.</b> Android te pide permitir «Instalar apps desconocidas» para la app desde donde lo abriste (WhatsApp, Drive o Archivos). Actívalo y vuelve atrás.</li>
+      <li><b>Toca Instalar.</b> Si Google Play Protect dice que no reconoce la app, toca «Más detalles» y luego «Instalar de todas formas». Sale porque la app es tuya y no está en Play Store.</li>
+      <li><b>Abre «Mi gym»</b> desde su ícono azul con una mancuerna.</li>
+    </ol>
+    <p class="note">Cuando te pase una versión nueva, instálala encima de la anterior y tus datos se mantienen. Si desinstalas la app, se borran.</p>
+  </section>
+
+  <div class="summary" aria-live="polite">
+    <div class="sum-row">
+      <span><b id="s-done">0</b> de <b id="s-total">0</b> probadas</span>
+      <span class="sum-ok"><b id="s-ok">0</b> bien</span>
+      <span class="sum-bad"><b id="s-bad">0</b> con fallas</span>
+    </div>
+    <div class="sumbar" aria-hidden="true"><span class="b-ok" id="b-ok" style="width:0%"></span><span class="b-bad" id="b-bad" style="width:0%"></span></div>
+    <p class="store-note" id="store-note">Conectando para guardar tus marcas…</p>
+  </div>
+
+  <div id="list"></div>
+
+  <section aria-labelledby="h-gen">
+    <h2 id="h-gen">Para terminar</h2>
+    <div class="general">
+      <div>
+        <label for="g-nombre">¿Cómo quieres que se llame la app?</label>
+        <p class="hint">Por ahora se llama «Mi gym». Si ya tienes un nombre, escríbelo.</p>
+        <input id="g-nombre" class="txt" type="text" data-note="nombre" autocomplete="off" placeholder="Nombre de la app">
+        <p class="saved" data-saved="nombre"></p>
+      </div>
+      <div>
+        <label for="g-ideas">Otras ideas o cambios</label>
+        <p class="hint">Lo que no te gustó, lo que te faltó o lo que cambiarías, aunque no esté en la lista.</p>
+        <textarea id="g-ideas" data-note="ideas" placeholder="Escribe aquí"></textarea>
+        <p class="saved" data-saved="ideas"></p>
+      </div>
+    </div>
+  </section>
+
+  <footer>Cuando termines, avísame en el chat y reviso tus marcas.</footer>
+</main>
+
+<script>
+(function () {
+  'use strict';
+
+  var SECTIONS = [
+    { title: 'Antes de empezar', items: [
+      { id: 'instalar', haz: 'Instala el APK siguiendo los pasos de arriba.', ok: 'Aparece «Mi gym» con su ícono azul de mancuerna.' },
+      { id: 'telefono', haz: 'Abre la app desde su ícono.', ok: 'Abre a pantalla completa, se lee bien y los botones son fáciles de tocar.' },
+      { id: 'sin-internet', haz: 'Pon el celular en modo avión y abre la app.', ok: 'Funciona igual, con las mismas letras y dibujos.' }
+    ] },
+    { title: 'Inicio', items: [
+      { id: 'fecha', haz: 'Abre la app.', ok: 'Arriba dice «Hoy es» con la fecha de hoy.' },
+      { id: 'lista', haz: 'Mira la lista de rutinas.', ok: 'Salen Torso, Pierna, Empuje, Jalón y Bíceps y tríceps, cada una con su imagen y hace cuántos días la hiciste.' },
+      { id: 'elegir', haz: 'Toca Torso.', ok: 'Se abre el día con la imagen grande arriba. Press de banca y jalón al pecho salen juntos como superserie.' },
+      { id: 'recordar', haz: 'Con Torso abierto, cierra la app del todo (sácala de las apps recientes) y vuelve a abrirla.', ok: 'Vuelve directo a Torso: la app recuerda qué rutina elegiste hoy.' },
+      { id: 'cambiar', haz: 'Toca «Cambiar rutina».', ok: 'Vuelves al inicio y puedes elegir otra.' },
+      { id: 'libre', haz: 'Toca «Entrenar sin rutina» y agrega un ejercicio.', ok: 'Se abre «Entrenamiento libre» con el ejercicio que agregaste.' }
+    ] },
+    { title: 'Anotar series', items: [
+      { id: 'prellenado', haz: 'Elige Torso y toca Press de banca.', ok: 'Peso y repeticiones vienen llenos con lo de la vez pasada (80 kg × 8), y arriba ves la vez pasada serie por serie.' },
+      { id: 'botones', haz: 'Usa − y +, y también escribe un número a mano (prueba 82,5).', ok: 'El peso cambia de 2,5 en 2,5 y las reps de 1 en 1. Acepta coma o punto.' },
+      { id: 'guardar', haz: 'Guarda una serie.', ok: 'Aparece en la fila «Hoy», al lado de la misma serie de la vez pasada, y arranca el descanso.' },
+      { id: 'corregir', haz: 'Toca una serie de la fila «Hoy».', ok: 'Puedes cambiarla o borrarla.' },
+      { id: 'record', haz: 'Pon 82,5 kg × 8. Antes de guardar, mira el aviso del trofeo. Luego guarda.', ok: 'El aviso dice que sería récord. Al guardar sale «¡Récord en 8 reps!» y la serie queda en amarillo con trofeo.' },
+      { id: 'records', haz: 'Toca «Tus récords».', ok: 'Ves tu mejor peso para cada número de repeticiones.' },
+      { id: 'descanso', haz: 'Deja correr el descanso. Prueba +30 s y Saltar.', ok: 'El tiempo baja, se puede alargar o saltar, y al terminar el celular vibra y te avisa.' },
+      { id: 'guardado', haz: 'Anota algunas series, cierra la app del todo y ábrela de nuevo.', ok: 'Tus series siguen ahí.' }
+    ] },
+    { title: 'Cambiar de ejercicio', items: [
+      { id: 'barra', haz: 'Usa la barra de ejercicios de arriba.', ok: 'Cambias con un toque. Cada uno muestra cuántas series llevas y se pone verde.' },
+      { id: 'resumen', haz: 'Toca el nombre del ejercicio arriba.', ok: 'Ves el resumen de hoy con todas tus series.' },
+      { id: 'siguiente', haz: 'Toca «Siguiente» abajo.', ok: 'Pasa al siguiente ejercicio de la rutina.' }
+    ] },
+    { title: 'Superseries', items: [
+      { id: 'super-salto', haz: 'En Torso, guarda una serie de press de banca.', ok: 'Te lleva solo a jalón al pecho. Al guardar ahí, vuelve a press de banca y arranca el descanso.' },
+      { id: 'super-momento', haz: 'En otro ejercicio, toca «Superserie» en la barra de arriba y elige otro.', ok: 'Quedan unidos solo por hoy. «Quitar» los separa.' },
+      { id: 'super-rutina', haz: 'Ve a Rutinas › Torso, une o separa ejercicios y toca Guardar. Luego toca «Cambiar rutina» y vuelve a elegir Torso.', ok: 'Se ve el cambio en la lista del día.' }
+    ] },
+    { title: 'Rutinas', items: [
+      { id: 'crear', haz: 'Crea una rutina nueva con nombre, imagen, color y ejercicios.', ok: 'Aparece en el inicio y en Rutinas.' },
+      { id: 'foto', haz: 'En una rutina, toca «Subir foto» y elige una foto de tu galería.', ok: 'La foto se ve como imagen de la rutina.' },
+      { id: 'borrar', haz: 'Borra una rutina de prueba.', ok: 'Desaparece. Las series que anotaste no se pierden.' }
+    ] },
+    { title: 'Ejercicios', items: [
+      { id: 'buscar', haz: 'En el menú Ejercicios, abre y cierra músculos y usa el buscador.', ok: 'Encuentras los ejercicios rápido.' },
+      { id: 'crear-ej', haz: 'Crea un ejercicio nuevo con el botón +.', ok: 'Aparece en su músculo y lo puedes agregar a una rutina.' },
+      { id: 'editar-ej', haz: 'Toca un ejercicio del catálogo y cámbiale el nombre.', ok: 'Se guarda el nombre nuevo.' }
+    ] },
+    { title: 'Cosas del celular', items: [
+      { id: 'atras', haz: 'Dentro de la app, usa el botón o el gesto «atrás» del celular.', ok: 'Vuelves a la pantalla anterior. Desde el inicio, sale de la app.' },
+      { id: 'pantalla', haz: 'Abre un ejercicio y deja el celular quieto más de un minuto.', ok: 'La pantalla no se apaga mientras anotas series.' },
+      { id: 'enlace', haz: 'En Ajustes, toca «Abrir la lista de pruebas».', ok: 'Se abre esta lista en el navegador del celular.' }
+    ] },
+    { title: 'Ajustes', items: [
+      { id: 'ajustes', haz: 'Toca el botón de ajustes, arriba a la derecha del inicio. Cambia el descanso y el salto del peso.', ok: 'Se nota al anotar series.' },
+      { id: 'ejemplo', haz: 'Cuando termines de probar, borra los datos de ejemplo en Ajustes.', ok: 'Desaparece el historial de ejemplo. Quedan tus rutinas, tus ejercicios y lo que anotaste tú.' }
+    ] }
+  ];
+
+  var ALL = [];
+  SECTIONS.forEach(function (s) { s.items.forEach(function (it) { ALL.push(it); }); });
+
+  function esc(s) {
+    return String(s).replace(/[&<>"']/g, function (c) {
+      return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c];
+    });
+  }
+
+  // La lista se dibuja completa de entrada; las marcas llegan después
+  var n = 0;
+  document.getElementById('list').innerHTML = SECTIONS.map(function (s, si) {
+    return '<section aria-labelledby="sec-' + si + '"><h2 id="sec-' + si + '">' + esc(s.title) + '</h2><ul class="items">' +
+      s.items.map(function (it) {
+        n++;
+        return '<li class="item" data-item="' + it.id + '"><span class="num">' + n + '</span><div class="body">' +
+          '<p class="haz">' + esc(it.haz) + '</p><p class="ok"><b>Debería pasar:</b> ' + esc(it.ok) + '</p>' +
+          '<div class="controls">' +
+          '<button type="button" class="st st-ok" data-status="bien" data-id="' + it.id + '" aria-pressed="false">Bien</button>' +
+          '<button type="button" class="st st-bad" data-status="falla" data-id="' + it.id + '" aria-pressed="false">Falla</button>' +
+          '<button type="button" class="st st-note" data-open-note="' + it.id + '" aria-expanded="false">Nota</button>' +
+          '</div>' +
+          '<div class="note-wrap" hidden><label class="sr-only" for="n-' + it.id + '">Nota de la prueba ' + n + '</label>' +
+          '<textarea id="n-' + it.id + '" data-note="' + it.id + '" placeholder="Qué pasó o qué cambiarías"></textarea><p class="saved" data-saved="' + it.id + '"></p></div>' +
+          '</div></li>';
+      }).join('') + '</ul></section>';
+  }).join('');
+  document.getElementById('s-total').textContent = ALL.length;
+
+  // ---------- Guardado ----------
+  var results = {};
+  var opened = {};
+  var db = null, mode = 'loading';
+  var pending = {}, running = {};
+  var LS_KEY = 'pruebas-app-gym-v1';
+
+  function saveLocal() { try { localStorage.setItem(LS_KEY, JSON.stringify(results)); } catch (e) {} }
+  function loadLocal() { try { var v = localStorage.getItem(LS_KEY); return v ? JSON.parse(v) : {}; } catch (e) { return {}; } }
+
+  function write(id) {
+    var body = { status: (results[id] && results[id].status) || null, note: (results[id] && results[id].note) || '', at: Date.now() };
+    if (mode !== 'db') { saveLocal(); showSaved(id, 'Guardado en este navegador'); return; }
+    pending[id] = body;
+    if (running[id]) return;
+    running[id] = true;
+    (function loop() {
+      var b = pending[id];
+      if (!b) { running[id] = false; return; }
+      delete pending[id];
+      db.collection('results').doc(id).set(b).then(function () {
+        if (!pending[id]) showSaved(id, 'Guardado');
+        loop();
+      }, function () {
+        showSaved(id, 'No se pudo guardar. Revisa tu conexión.');
+        loop();
+      });
+    })();
+  }
+
+  function showSaved(id, txt) {
+    var el = document.querySelector('[data-saved="' + id + '"]');
+    if (el) el.textContent = txt;
+  }
+
+  function apply() {
+    var ok = 0, bad = 0;
+    ALL.forEach(function (it) {
+      var r = results[it.id] || {}, row = document.querySelector('[data-item="' + it.id + '"]');
+      if (r.status === 'bien') ok++;
+      if (r.status === 'falla') bad++;
+      row.classList.toggle('bien', r.status === 'bien');
+      row.classList.toggle('falla', r.status === 'falla');
+      row.querySelector('.st-ok').setAttribute('aria-pressed', String(r.status === 'bien'));
+      row.querySelector('.st-bad').setAttribute('aria-pressed', String(r.status === 'falla'));
+      var show = !!(opened[it.id] || r.note || r.status === 'falla');
+      row.querySelector('.note-wrap').hidden = !show;
+      row.querySelector('.st-note').setAttribute('aria-expanded', String(show));
+      var ta = row.querySelector('textarea');
+      if (document.activeElement !== ta && ta.value !== (r.note || '')) ta.value = r.note || '';
+    });
+    ['nombre', 'ideas'].forEach(function (k) {
+      var el = document.querySelector('[data-note="' + k + '"]'), v = (results[k] && results[k].note) || '';
+      if (document.activeElement !== el && el.value !== v) el.value = v;
+    });
+    var total = ALL.length;
+    document.getElementById('s-done').textContent = ok + bad;
+    document.getElementById('s-ok').textContent = ok;
+    document.getElementById('s-bad').textContent = bad;
+    document.getElementById('b-ok').style.width = (ok / total * 100) + '%';
+    document.getElementById('b-bad').style.width = (bad / total * 100) + '%';
+  }
+
+  document.addEventListener('click', function (e) {
+    var b = e.target.closest('[data-status]');
+    if (b) {
+      var id = b.getAttribute('data-id'), v = b.getAttribute('data-status');
+      var cur = results[id] || {};
+      results[id] = { status: cur.status === v ? null : v, note: cur.note || '' };
+      apply(); write(id);
+      if (results[id].status === 'falla') {
+        var ta = document.getElementById('n-' + id);
+        if (ta && !ta.value) ta.focus();
+      }
+      return;
+    }
+    var nb = e.target.closest('[data-open-note]');
+    if (nb) {
+      var nid = nb.getAttribute('data-open-note');
+      opened[nid] = !(nb.getAttribute('aria-expanded') === 'true');
+      apply();
+      if (opened[nid]) document.getElementById('n-' + nid).focus();
+    }
+  });
+
+  var timers = {};
+  document.addEventListener('input', function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute('data-note');
+    if (!id) return;
+    var cur = results[id] || {};
+    results[id] = { status: cur.status || null, note: e.target.value };
+    showSaved(id, 'Escribiendo…');
+    clearTimeout(timers[id]);
+    timers[id] = setTimeout(function () { write(id); }, 800);
+  });
+  document.addEventListener('focusout', function (e) {
+    var id = e.target.getAttribute && e.target.getAttribute('data-note');
+    if (id && timers[id]) { clearTimeout(timers[id]); timers[id] = null; write(id); }
+  });
+
+  function startLocal() {
+    mode = 'local';
+    results = loadLocal();
+    document.getElementById('store-note').textContent = 'No pude conectar con el guardado de Claude: tus marcas quedan solo en este navegador y no las puedo leer. Ábrela desde claude.ai con tu sesión iniciada.';
+    apply();
+  }
+
+  apply();
+  var api = window.claude && typeof window.claude.use === 'function' ? window.claude : null;
+  if (!api) { startLocal(); return; }
+  api.use('db').then(function (handle) {
+    if (!handle) { startLocal(); return; }
+    db = handle; mode = 'db';
+    document.getElementById('store-note').textContent = 'Tus marcas y notas se guardan solas. Yo las puedo leer cuando me avises.';
+    db.collection('results').onSnapshot(function (snap) {
+      var next = {};
+      snap.docs.forEach(function (d) { next[d.id] = d.data(); });
+      // Lo que se está escribiendo ahora manda sobre lo que llega
+      Object.keys(pending).forEach(function (k) { next[k] = { status: pending[k].status, note: pending[k].note }; });
+      Object.keys(timers).forEach(function (k) { if (timers[k] && results[k]) next[k] = results[k]; });
+      results = next;
+      apply();
+    }, function () {
+      document.getElementById('store-note').textContent = 'Se perdió la conexión con el guardado. Recarga la página.';
+    });
+  }, startLocal);
+})();
+</script>
