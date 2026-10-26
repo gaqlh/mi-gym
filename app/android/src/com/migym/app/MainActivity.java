@@ -26,7 +26,7 @@ import java.io.InputStream;
 import java.io.OutputStream;
 
 /**
- * La app es la misma página web que se prueba en Claude, guardada dentro del APK (assets/web/index.html,
+ * La app es la misma página web que se prueba en Claude, guardada dentro del APK (assets/index.html,
  * con letras y todo incluidos). Se carga con la dirección https://appassets.androidplatform.net para que
  * el guardado del navegador (localStorage) quede en el celular y no se pierda al actualizar la app.
  */
@@ -98,7 +98,7 @@ public class MainActivity extends Activity {
 
     private String leerPagina() {
         try {
-            InputStream in = getAssets().open("web/index.html");
+            InputStream in = getAssets().open("index.html");
             ByteArrayOutputStream out = new ByteArrayOutputStream();
             try {
                 byte[] buf = new byte[64 * 1024];

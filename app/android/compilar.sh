@@ -17,10 +17,11 @@ SALIDA="$AQUI/salida/MiGym-$VERSION_NAME.apk"
 w() { cygpath -w "$1"; }
 
 rm -rf "$B"
-mkdir -p "$B/gen" "$B/classes" "$B/assets/web" "$AQUI/salida"
+mkdir -p "$B/gen" "$B/classes" "$B/assets" "$AQUI/salida"
 
 echo "1/6 Página de la app"
-python "$(w "$AQUI/preparar_web.py")" "$(w "$AQUI/../app-gym.html")" "$(w "$B/assets/web")" "$VERSION_NAME"
+# La página va en la raíz de assets: aapt2 en Windows guarda las subcarpetas con «\» y Android no las encuentra
+python "$(w "$AQUI/preparar_web.py")" "$(w "$AQUI/../app-gym.html")" "$(w "$B/assets")" "$VERSION_NAME"
 
 echo "2/6 Recursos e ícono"
 "$BT/aapt2.exe" compile --dir "$(w "$AQUI/res")" -o "$(w "$B/res.zip")"
